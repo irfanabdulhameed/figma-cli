@@ -3,6 +3,22 @@
 figma-cli controls **Figma Desktop** directly (no API key). It runs in any
 terminal. Open Figma Desktop, then `figma-cli connect` once per session.
 
+## Connection rules (Yolo mode only — never interrupt the user's Figma)
+1. **Always use Yolo mode** (direct CDP). Never use Safe mode and never ask the
+   user to open the FigCli plugin. If the Yolo patch is blocked on macOS, tell the
+   user to enable their terminal under System Settings → Privacy & Security →
+   **App Management**, wait, then retry `figma-cli connect`. Do NOT fall back to
+   Safe mode as a workaround.
+2. **The patch is one-time and persistent.** If Figma was already patched (any
+   previous successful connect), never patch, unpatch, quit, or relaunch Figma
+   again. Only the very first patch ever requires a single Figma restart.
+3. **Session start:** run `figma-cli daemon status`. If connected → do nothing
+   else. If down → `figma-cli connect` (this attaches to the running, already-
+   patched Figma; it must not relaunch it).
+4. **Never restart or reload Figma to "fix" a failed command.** Retry through the
+   daemon (`figma-cli daemon restart` restarts only the local daemon, not Figma).
+   Never reload the Figma page/tab and never toggle plugins as part of a workflow.
+
 ## Golden rules
 1. **Create frames with `render` / `render-batch`** — they have smart positioning.
    NEVER use `eval` to create visual nodes (no positioning, bypasses guards).
