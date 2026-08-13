@@ -1,0 +1,46 @@
+{
+  "name": "figma-cli",
+  "version": "2.1.0",
+  "description": "CLI for managing Figma design systems. Create variables, components, and more. No API key required.",
+  "author": "Irfan Abdul Hameed",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "figma-cli": "src/index.js"
+  },
+  "files": [
+    "src",
+    "plugin"
+  ],
+  "keywords": [
+    "figma",
+    "design-system",
+    "design-tokens",
+    "cli",
+    "variables"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/irfanabdulhameed/figma-cli.git"
+  },
+  "homepage": "https://github.com/irfanabdulhameed/figma-cli",
+  "bugs": {
+    "url": "https://github.com/irfanabdulhameed/figma-cli/issues"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "figma-use": "^0.13.3",
+    "jpeg-js": "^0.4.4",
+    "ora": "^8.0.0",
+    "pngjs": "^7.0.0",
+    "ws": "^8.16.0",
+    "yaml": "^2.9.0"
+  }
+}

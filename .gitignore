@@ -1,0 +1,10 @@
+.DS_Store
+*.log
+DEV-NOTES.md
+node_modules/
+.figma-client-*.mjs
+screenshot.png
+docs/figma-api/
+
+_ul
+src/.figma-client-*.mjs

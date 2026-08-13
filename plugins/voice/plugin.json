@@ -1,0 +1,13 @@
+{
+  "name": "voice",
+  "version": "0.1.0",
+  "description": "Talk to Figma with your voice",
+  "commands": ["voice", "chat"],
+  "commandDescriptions": {
+    "voice": "Voice-controlled Figma (push-to-talk)",
+    "chat": "Text-based Figma assistant"
+  },
+  "entry": "index.js",
+  "requiredKeys": ["ANTHROPIC_API_KEY"],
+  "platforms": ["darwin"]
+}

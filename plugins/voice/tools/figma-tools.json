@@ -1,0 +1,182 @@
+[
+  {
+    "name": "figma_render",
+    "description": "Render a JSX-like layout into Figma Desktop. Use for creating frames, text, components, layouts. Supports shadcn variable binding via 'var:name' syntax (e.g. bg=\"var:card\"). Use this for building UI components, cards, sections, pages.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "jsx": {
+          "type": "string",
+          "description": "JSX string to render. Example: '<Frame bg=\"var:card\" p={24} rounded={12}><Text size={18}>Hello</Text></Frame>'"
+        }
+      },
+      "required": ["jsx"]
+    }
+  },
+  {
+    "name": "figma_verify",
+    "description": "Take a screenshot of the current selection or a specific node in Figma. Use after creating or modifying anything to visually verify the result. Returns a base64 image.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "description": "Optional node ID (e.g. '123:456'). If omitted, screenshots the current selection."
+        }
+      }
+    }
+  },
+  {
+    "name": "figma_blocks_create",
+    "description": "Create a pre-built UI block (dashboard, etc.) in Figma. Use this instead of building dashboards manually. Available blocks: dashboard-01.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "block": {
+          "type": "string",
+          "description": "Block name, e.g. 'dashboard-01'"
+        }
+      },
+      "required": ["block"]
+    }
+  },
+  {
+    "name": "figma_blocks_list",
+    "description": "List all available pre-built UI blocks.",
+    "input_schema": { "type": "object", "properties": {} }
+  },
+  {
+    "name": "figma_tokens",
+    "description": "Create design tokens/variables in Figma. Presets: 'shadcn' (244 primitives + 32 semantic with Light/Dark), 'tailwind' (242 primitive colors), 'ds' (IDS base colors).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "preset": {
+          "type": "string",
+          "enum": ["shadcn", "tailwind", "ds"],
+          "description": "Which token preset to install."
+        }
+      },
+      "required": ["preset"]
+    }
+  },
+  {
+    "name": "figma_eval",
+    "description": "Execute arbitrary Figma plugin API JavaScript. Use for complex operations not covered by other tools (e.g. custom component creation, bulk edits). The code runs inside Figma's plugin sandbox. Wrap async code in '(async () => { ... })()'.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "JavaScript code to execute in Figma plugin context."
+        }
+      },
+      "required": ["code"]
+    }
+  },
+  {
+    "name": "figma_a11y_audit",
+    "description": "Run a full accessibility audit (contrast, touch targets, text) on a specific node. IMPORTANT: Always pass a node_id — call figma_get_selection first to get the user's current selection, or pass the id of a specific component. Auditing the whole page without a node_id is extremely slow and should be avoided.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "description": "Node ID to audit (e.g. '2004:29'). Required for fast results."
+        }
+      },
+      "required": ["node_id"]
+    }
+  },
+  {
+    "name": "figma_get_selection",
+    "description": "Get info about the currently selected node(s) in Figma: names, types, sizes, positions. Use this to understand what the user is pointing at before acting.",
+    "input_schema": { "type": "object", "properties": {} }
+  },
+  {
+    "name": "figma_component_list",
+    "description": "List all components in the current Figma file.",
+    "input_schema": { "type": "object", "properties": {} }
+  },
+  {
+    "name": "figma_gradient_extract",
+    "description": "Extract a gradient from a raster image (PNG/JPG) on disk and optionally apply it to a Figma node. Two modes: 'linear' extracts a 2/3/5-stop top-bottom or left-right gradient (good for backgrounds with a single dominant axis). 'mesh' approximates a mesh gradient by sampling key color anchors and building a blur-stack inside a target Frame (smooth blob-blended look, good for blossom/aurora wallpapers). Auto-trims black/transparent image borders and auto-detects direction in linear mode.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "image_path": {
+          "type": "string",
+          "description": "Absolute path to the source image. PNG or JPG."
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["linear", "mesh"],
+          "description": "linear (default) = single GRADIENT_LINEAR paint with 2-5 stops. mesh = stack of LAYER_BLUR ellipses inside a Frame for a smooth 2D mesh-like look."
+        },
+        "apply_to": {
+          "type": "string",
+          "description": "Optional Figma node id. For mode=linear this must be a node with fills; for mode=mesh it MUST be a FRAME (the frame's children are replaced with the blur-stack)."
+        },
+        "direction": {
+          "type": "string",
+          "enum": ["auto", "vertical", "horizontal"],
+          "description": "[linear only] Force gradient direction. Default 'auto'."
+        },
+        "stops": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 5,
+          "description": "[linear only] Number of color stops. Default 3."
+        },
+        "blur": {
+          "type": "number",
+          "description": "[mesh only] Blur radius as fraction of min(W, H). Default 0.38. Lower = sharper blobs; higher = smoother blend."
+        }
+      },
+      "required": ["image_path"]
+    }
+  },
+  {
+    "name": "figma_gradient_mesh",
+    "description": "Generate a mesh-gradient wallpaper from a color palette (no source image). Builds a smooth blob-blended background by stacking layer-blurred ellipses inside a clipping frame. Use when the user asks to create a wallpaper, mesh gradient, aurora/blossom-style background, or 'gradient from these colors'. Creates a new frame by default, or fills an existing frame with apply_to. When generating MULTIPLE wallpapers, vary the 'style' (or leave it 'auto') so each one looks different instead of all having a center blob.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "colors": {
+          "type": "string",
+          "description": "Comma-separated hex colors. For rich, vivid wallpapers use 5-6 colors spanning DIFFERENT hues (mix a warm, a cool, and a bright accent) — NOT shades of one color, which blend into a flat 2-tone wash. Example: '#fbff12,#ff206e,#41ead4,#0d00a4,#22223b'. The command auto-adds depth + a focal glow."
+        },
+        "style": {
+          "type": "string",
+          "enum": ["auto", "scatter", "diagonal", "bands", "drift", "spotlight", "corners"],
+          "description": "Composition layout. 'auto' (default) picks a random one each call. scatter=spread out, diagonal=flow corner-to-corner, bands=stripes, drift=clustered to one side, spotlight=one big off-center + satellites, corners=color in each corner."
+        },
+        "seed": {
+          "type": "integer",
+          "description": "Random seed for a reproducible composition. Omit for a fresh random layout each call."
+        },
+        "apply_to": {
+          "type": "string",
+          "description": "Optional Figma FRAME id to populate. If omitted, a new frame is created."
+        },
+        "size": {
+          "type": "string",
+          "description": "Frame size for a new wallpaper as WxH (e.g. '1920x1080'). Ignored when apply_to is set. Default 1920x1080."
+        },
+        "base": {
+          "type": "string",
+          "description": "Optional base fill hex behind the blobs. Defaults to the palette average."
+        },
+        "blur": {
+          "type": "number",
+          "description": "Blur radius as fraction of min(W, H). Default 0.42."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name for the created frame. Default 'Mesh Wallpaper'."
+        }
+      },
+      "required": ["colors"]
+    }
+  }
+]
