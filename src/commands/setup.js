@@ -13,6 +13,7 @@ import {
   program,
   DAEMON_PORT,
   figmaUse,
+  resolvePageScope,
   getDaemonToken,
   getManualStartCommand,
   isCdpAlive,
@@ -485,6 +486,16 @@ program
       console.log(chalk.yellow('  ⚠ Daemon NOT running'));
       console.log(chalk.gray('    Most commands (render, set-batch, eval) will fail with "fetch failed".'));
       console.log(chalk.gray('    Start it with:  figma-cli daemon start'));
+    }
+
+    // Two agents in one file share a tab, and therefore share currentPage.
+    // Whether this session is pinned to a page decides if that's safe.
+    const pageScope = resolvePageScope();
+    if (pageScope) {
+      console.log(chalk.green('  ✓ Page scope') + chalk.gray(` (${pageScope} via $FIGMA_CLI_PAGE)`));
+    } else {
+      console.log(chalk.gray('  · No page scope — currentPage/selection are shared with any other agent in this file'));
+      console.log(chalk.gray('    Pin this session with:  FIGMA_CLI_PAGE=<page-id> node src/index.js ...'));
     }
   });
 

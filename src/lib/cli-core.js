@@ -12,6 +12,7 @@ import { createInterface } from 'readline';
 import { homedir, tmpdir } from 'os';
 import { createServer } from 'http';
 import { FigJamClient } from '../figjam-client.js';
+import { PAGE_OF_HELPER, pageResolveCode, wrapRenderForPageScope } from './page-scope.js';
 import { FigmaClient } from '../figma-client.js';
 import * as apiDocs from '../api-docs.js';
 import { isPatched, patchFigma, unpatchFigma, getFigmaCommand, getCdpPort, getFigmaBinaryPath } from '../figma-patch.js';
@@ -151,6 +152,27 @@ const GENERIC_NAME_PATTERNS = new Set([
 ]);
 
 /**
+ * Page scoping — lets two agents drive ONE Figma file at the same time, each
+ * pinned to a different page.
+ *
+ * An open file is a single Figma Desktop tab, so every daemon attached to it
+ * shares one plugin sandbox and therefore ONE `figma.currentPage`. Commands
+ * that resolve nodes through `currentPage` (or the selection) are really
+ * reading whatever page the *other* agent last looked at. A page scope swaps
+ * those implicit lookups for an explicit page node, and turns a cross-page
+ * write into a loud error instead of silent damage.
+ *
+ * Set it per invocation, alongside DAEMON_PORT / FIGMA_CLI_TARGET:
+ *   DAEMON_PORT=3457 FIGMA_CLI_PAGE=5:2 node src/index.js set fill ...
+ * or per command with `--page 5:2`. The flag wins over the env var.
+ */
+function resolvePageScope(options = {}) {
+  const explicit = options && options.page ? String(options.page).trim() : '';
+  const fromEnv = (process.env.FIGMA_CLI_PAGE || '').trim();
+  return explicit || fromEnv || null;
+}
+
+/**
  * Build the JS snippet that resolves a target `nodes` list inside an eval.
  * One source-of-truth for all `set <subcommand>` selectors. Supports:
  *  - --query "pattern"     fuzzy name match (rejects generic defaults)
@@ -160,8 +182,15 @@ const GENERIC_NAME_PATTERNS = new Set([
  *
  * `filterExpr` is optional and lets a caller scope --query to nodes that
  * actually support the property (e.g. `'fills' in n`).
+ *
+ * Under a page scope (--page / $FIGMA_CLI_PAGE) --query searches that page
+ * instead of currentPage, --node asserts every id actually lives there, and
+ * the selection fallback is refused outright — selection is per-tab state
+ * shared with whoever else is in the file.
  */
 function buildNodeSelector(options, { filterExpr = '' } = {}) {
+  const pageId = resolvePageScope(options);
+
   if (options.query) {
     const q = String(options.query).trim();
     if (GENERIC_NAME_PATTERNS.has(q.toLowerCase())) {
@@ -171,19 +200,94 @@ function buildNodeSelector(options, { filterExpr = '' } = {}) {
       process.exit(1);
     }
     const filter = filterExpr ? `(${filterExpr}) && ` : '';
-    return `const __pat = ${JSON.stringify(q.toLowerCase())};
+    if (!pageId) {
+      return `const __pat = ${JSON.stringify(q.toLowerCase())};
        const nodes = figma.currentPage.findAll(n => ${filter}typeof n.name === 'string' && n.name.toLowerCase().includes(__pat));`;
+    }
+    return `${pageResolveCode(pageId)}
+       const __pat = ${JSON.stringify(q.toLowerCase())};
+       const nodes = __scope.findAll(n => ${filter}typeof n.name === 'string' && n.name.toLowerCase().includes(__pat));`;
   }
+
   if (options.node) {
     const ids = String(options.node).split(/[\s,]+/).filter(Boolean);
-    if (ids.length === 1) {
-      return `const __n = await figma.getNodeByIdAsync(${JSON.stringify(ids[0])}); const nodes = __n ? [__n] : [];`;
-    }
-    return `const __ids = ${JSON.stringify(ids)};
+    if (!pageId) {
+      if (ids.length === 1) {
+        return `const __n = await figma.getNodeByIdAsync(${JSON.stringify(ids[0])}); const nodes = __n ? [__n] : [];`;
+      }
+      return `const __ids = ${JSON.stringify(ids)};
        const __res = await Promise.all(__ids.map(id => figma.getNodeByIdAsync(id)));
        const nodes = __res.filter(Boolean);`;
+    }
+    return `${pageResolveCode(pageId)}
+       const __ids = ${JSON.stringify(ids)};
+       const __res = await Promise.all(__ids.map(id => figma.getNodeByIdAsync(id)));
+       ${PAGE_OF_HELPER}
+       const __stray = __res.filter(Boolean).filter(n => { const p = __pageOf(n); return !p || p.id !== __scopeId; });
+       if (__stray.length) throw new Error('page-scope violation: ' + __stray.map(n => n.id + ' (' + n.name + ')').join(', ') + ' not on page ' + __scopeId + ' (' + __scope.name + ')');
+       const nodes = __res.filter(Boolean);`;
+  }
+
+  if (pageId) {
+    console.error(chalk.red('✗'),
+      `Page scope ${pageId} is set, so this command cannot fall back to the selection.`);
+    console.error(chalk.yellow('  Selection is per-tab state shared with any other agent in this file.'));
+    console.error(chalk.yellow('  Pass --node <id> or --query <pattern> instead.'));
+    process.exit(1);
   }
   return `const nodes = figma.currentPage.selection;`;
+}
+
+/**
+ * Reject eval code that would reach for the shared currentPage while a page
+ * scope is active. `setCurrentPageAsync` is the one call that actively breaks
+ * the other agent — it moves the tab out from under them mid-script — so it is
+ * never allowed. Plain reads are refused too, since `clone()` and
+ * `appendChild` land on currentPage by default; `--unsafe-current-page` is the
+ * escape hatch for the rare deliberate case.
+ */
+function assertPageSafeCode(code, pageId, { allowCurrentPage = false } = {}) {
+  if (!pageId || !code) return;
+  if (/figma\s*\.\s*setCurrentPageAsync|figma\s*\.\s*currentPage\s*=[^=]/.test(code)) {
+    console.log(chalk.red('✗ Refusing to run: this code switches the active page.'));
+    console.log(chalk.yellow(`  Page scope ${pageId} is active, and the tab's currentPage is shared with`));
+    console.log(chalk.yellow('  every other agent in this file — switching it breaks their script mid-run.'));
+    console.log(chalk.gray('  Resolve the page explicitly instead:'));
+    console.log(chalk.gray(`    const page = await figma.getNodeByIdAsync("${pageId}"); await page.loadAsync();`));
+    process.exit(1);
+  }
+  if (!allowCurrentPage && /figma\s*\.\s*currentPage/.test(code)) {
+    console.log(chalk.red('✗ Refusing to run: this code reads figma.currentPage.'));
+    console.log(chalk.yellow(`  Page scope ${pageId} is active. currentPage is whichever page the *other*`));
+    console.log(chalk.yellow('  agent last opened, so reads through it silently target the wrong page.'));
+    console.log(chalk.gray('  Use the scoped page node:'));
+    console.log(chalk.gray(`    const page = await figma.getNodeByIdAsync("${pageId}"); await page.loadAsync();`));
+    console.log(chalk.gray('    page.findAll(...) / page.appendChild(node)'));
+    console.log(chalk.gray('  Override with --unsafe-current-page if you really mean it.'));
+    process.exit(1);
+  }
+}
+
+/**
+ * Add `--page <id>` to every LEAF subcommand that doesn't already define one
+ * (FigJam's `-p, --page <title>` means something else and is left alone).
+ * Called once from index.js after all command groups have registered.
+ *
+ * Leaf-only matters: if a group command (`set`, `bind`) also declares --page,
+ * Commander consumes the flag at the group level and the leaf's action never
+ * sees it — `set fill "#f00" --page 5:2` would silently fall back to the
+ * selection. Groups have no action of their own, so they lose nothing.
+ */
+function registerPageOption(cmd) {
+  for (const sub of cmd.commands) {
+    if (sub.commands.length > 0) {
+      registerPageOption(sub);
+      continue;
+    }
+    if (!sub.options.some(o => o.long === '--page')) {
+      sub.option('--page <id>', 'Scope to one page id (e.g. 5:2); defaults to $FIGMA_CLI_PAGE');
+    }
+  }
 }
 
 // Daemon configuration
@@ -408,19 +512,24 @@ async function fastEval(code) {
 }
 
 // Fast render via daemon (falls back to direct connection)
-async function fastRender(jsx) {
+async function fastRender(jsx, options = {}) {
+  const pageId = resolvePageScope(options);
+
   // Try daemon first (auto-restarting it if it idle-shut-down)
   if (await ensureDaemonRunning()) {
     try {
-      return await daemonExec('render', { jsx });
+      return await daemonExec('render', { jsx, pageId });
     } catch (e) {
       // Continue to fallback
     }
   }
 
-  // Fall back to direct connection
+  // Fall back to direct connection. client.render() parses and evals in one
+  // step, so under a page scope we split it to wrap the generated code.
   const client = await getFigmaClient();
-  return await client.render(jsx);
+  if (!pageId) return await client.render(jsx);
+  const code = await client.parseJSX(jsx);
+  return await client.eval(wrapRenderForPageScope(code, pageId));
 }
 
 // Helper: run figma-use commands with Node 20+ compatibility warning
@@ -950,6 +1059,7 @@ export {
   DAEMON_PORT,
   DAEMON_TOKEN_FILE,
   GENERIC_NAME_PATTERNS,
+  assertPageSafeCode,
   __dirname,
   __filename,
   _figmaClient,
@@ -984,6 +1094,9 @@ export {
   pkg,
   program,
   prompt,
+  registerPageOption,
+  resolvePageScope,
+  wrapRenderForPageScope,
   runFigmaUse,
   saveConfig,
   smartPosCode,

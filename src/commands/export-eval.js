@@ -4,11 +4,13 @@ import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import {
   program,
+  assertPageSafeCode,
   checkConnection,
   daemonExec,
   figmaEvalSync,
   figmaUse,
   isDaemonRunning,
+  resolvePageScope,
   unescapeShell
 } from '../lib/cli-core.js';
 
@@ -303,6 +305,7 @@ program
   .command('eval [code]')
   .description('Execute JavaScript in Figma plugin context')
   .option('-f, --file <path>', 'Run code from file instead of argument')
+  .option('--unsafe-current-page', 'Allow figma.currentPage reads while a page scope is active')
   .action(async (code, options) => {
     checkConnection();
     let jsCode = code ? unescapeShell(code) : code;
@@ -320,6 +323,10 @@ program
       console.log(chalk.red('✗ No code provided. Use: eval "code" or eval --file /path/to/script.js'));
       return;
     }
+
+    assertPageSafeCode(jsCode, resolvePageScope(options), {
+      allowCurrentPage: Boolean(options.unsafeCurrentPage)
+    });
 
     // Always prefer async daemon (more reliable, no shell timeout issues)
     if (isDaemonRunning()) {
@@ -362,13 +369,17 @@ program
 program
   .command('run <file>')
   .description('Run JavaScript file in Figma (alias for eval --file)')
-  .action(async (file) => {
+  .option('--unsafe-current-page', 'Allow figma.currentPage reads while a page scope is active')
+  .action(async (file, options = {}) => {
     checkConnection();
     if (!existsSync(file)) {
       console.log(chalk.red('✗ File not found: ' + file));
       return;
     }
     const code = readFileSync(file, 'utf8');
+    assertPageSafeCode(code, resolvePageScope(options), {
+      allowCurrentPage: Boolean(options.unsafeCurrentPage)
+    });
     try {
       // Use async daemon path for better performance with long scripts
       if (isDaemonRunning()) {

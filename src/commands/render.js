@@ -18,8 +18,10 @@ import {
   getDaemonToken,
   getFigmaClient,
   isDaemonRunning,
+  resolvePageScope,
   unescapeShell
 } from '../lib/cli-core.js';
+import { pageScopeRelocateCode } from '../lib/page-scope.js';
 
 // ============ RENDER ============
 
@@ -52,6 +54,28 @@ function printUnresolvedVars(unresolved) {
 // exactly those nodes. CLI-side state file: covers every render path
 // (eval-based, daemon render, render-batch) and survives daemon restarts.
 const LAST_RENDER_FILE = join(CONFIG_DIR, 'last-render.json');
+
+/**
+ * Under a page scope, pull freshly rendered nodes onto the scoped page.
+ *
+ * `render` has four creation paths — two daemon evals, Safe Mode's daemon
+ * render, and Yolo mode shelling out to the external `figma-use` binary — and
+ * all of them create on the shared `currentPage`. Only the daemon paths can be
+ * wrapped at generation time, so every path also gets this sweep afterwards.
+ * The relocation is idempotent, so nodes the wrapper already moved are skipped.
+ */
+async function placeOnScopePage(nodes, options = {}) {
+  const pageId = resolvePageScope(options);
+  if (!pageId) return;
+  const ids = (nodes || []).filter(n => n && n.id).map(n => n.id);
+  if (!ids.length) return;
+  try {
+    await fastEval(pageScopeRelocateCode(ids, pageId));
+  } catch (e) {
+    console.log(chalk.yellow('⚠ Rendered, but could not move onto page ' + pageId + ': ' + e.message));
+    console.log(chalk.gray('  The node is on whichever page was active — move it before continuing.'));
+  }
+}
 
 function recordCreated(nodes) {
   try {
@@ -384,6 +408,7 @@ program
           console.log(chalk.green('✓ Rendered: ' + result.id));
           if (result.name) console.log(chalk.gray('  name: ' + result.name));
           printUnresolvedVars(result.unresolved);
+          await placeOnScopePage([result], options);
           recordCreated([result]);
           await maybeAsComponent(result.id);
           if (options.verify) await verifyRendered(result.id);
@@ -400,6 +425,7 @@ program
           if (result && result.id) {
             console.log(chalk.green('✓ Rendered: ' + result.id));
             if (result.name) console.log(chalk.gray('  name: ' + result.name));
+            await placeOnScopePage([result], options);
             recordCreated([result]);
             await maybeAsComponent(result.id);
             if (options.verify) await verifyRendered(result.id);
@@ -424,7 +450,7 @@ program
       let result;
       if (useDaemonRender) {
         // Safe Mode: use daemon render (works via plugin)
-        result = await daemonExec('render', { jsx });
+        result = await daemonExec('render', { jsx, pageId: resolvePageScope(options) });
         // Position the frame after creation
         if (result && result.id && (posX !== undefined || posY !== undefined)) {
           await fastEval(`(async () => {
@@ -450,6 +476,7 @@ program
 
       console.log(chalk.green('✓ Rendered: ' + result.id));
       if (result.name) console.log(chalk.gray('  name: ' + result.name));
+      await placeOnScopePage([result], options);
       recordCreated([result]);
 
       // Post-process to fix properties figma-use doesn't set correctly
@@ -506,6 +533,7 @@ program
         gap,
         vertical,
         collection: options.collection || undefined,
+        pageId: resolvePageScope(options),
       });
       // Unwrap the wrapped form returned when there are unresolved vars.
       let unresolvedVars = null;
@@ -519,6 +547,7 @@ program
           console.log(chalk.green('✓ Rendered: ' + r.id + (r.name ? ' (' + r.name + ')' : '')));
         });
         console.log(chalk.cyan(`\n${results.length} frames created`));
+        await placeOnScopePage(results, options);
         recordCreated(results);
         if (unresolvedVars && unresolvedVars.length > 0) {
           console.log(chalk.yellow(`\n⚠ ${unresolvedVars.length} variable reference(s) could not be resolved:`));

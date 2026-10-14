@@ -19,6 +19,39 @@ terminal. Open Figma Desktop, then `figma-cli connect` once per session.
    daemon (`figma-cli daemon restart` restarts only the local daemon, not Figma).
    Never reload the Figma page/tab and never toggle plugins as part of a workflow.
 
+## Running two agents at once
+
+Two agents can share one Figma file if each stays on its own page. An open file
+is a single Figma Desktop tab, so both agents share one plugin sandbox and
+therefore one `figma.currentPage` — anything resolved through `currentPage` or
+the selection reads whatever page the *other* agent last opened.
+
+Pin each session to its page and the CLI enforces the rest:
+
+```
+# agent A                                  # agent B
+DAEMON_PORT=3457 \                         DAEMON_PORT=3458 \
+FIGMA_CLI_TARGET="My File" \               FIGMA_CLI_TARGET="My File" \
+FIGMA_CLI_PAGE=5:2 node src/index.js ...   FIGMA_CLI_PAGE=8:1623 node src/index.js ...
+```
+
+`--page <id>` sets it per command and beats the env var. `figma-cli status`
+shows the active scope. With a scope set:
+- `--query` searches that page instead of `currentPage`
+- `--node` fails loudly if an id lives on another page (page-scope violation)
+- the selection fallback is refused — selection is shared tab state
+- `eval` / `run` refuse code touching `figma.currentPage`, and always refuse
+  `setCurrentPageAsync` (it yanks the tab out from under the other agent).
+  Resolve the page instead: `const page = await figma.getNodeByIdAsync("5:2");
+  await page.loadAsync();` then `page.findAll(...)` / `page.appendChild(n)`.
+  `--unsafe-current-page` overrides the read check if you truly need it.
+- `render` / `render-batch` place new frames on the scoped page instead of the
+  active one, in free space to the right of what's already there. Relative
+  layout (`--gap`, `--direction`) is preserved.
+
+Still one agent per *page*, and shared resources (components, styles,
+variables, page order) stay off-limits to both unless you agree who owns them.
+
 ## Golden rules
 1. **Create frames with `render` / `render-batch`** — they have smart positioning.
    NEVER use `eval` to create visual nodes (no positioning, bypasses guards).

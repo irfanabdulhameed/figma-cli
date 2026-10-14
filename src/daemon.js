@@ -20,6 +20,7 @@ import { readFileSync, statSync, writeFileSync, unlinkSync, readdirSync } from '
 import { join, dirname } from 'path';
 import { homedir, tmpdir } from 'os';
 import { fileURLToPath, pathToFileURL } from 'url';
+import { wrapRenderForPageScope } from './lib/page-scope.js';
 
 // Hot-reload FigmaClient: copy to temp file and import (Node.js ES modules don't support cache busting)
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -425,7 +426,7 @@ async function handleRequest(req, res) {
 
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         try {
-          const { action, code, jsx, jsxArray, gap, vertical, collection } = payload;
+          const { action, code, jsx, jsxArray, gap, vertical, collection, pageId } = payload;
           let result;
 
           const execWithTimeout = async (fn, timeoutMs = 30000) => {
@@ -445,7 +446,7 @@ async function handleRequest(req, res) {
               // Parse JSX to code, then execute via unified eval (works with both CDP and Plugin)
               const ClientClass = await getFigmaClient();
               const parser = new ClientClass();
-              const renderCode = await parser.parseJSX(jsx);
+              const renderCode = wrapRenderForPageScope(await parser.parseJSX(jsx), pageId);
               result = await execWithTimeout(() => executeEval(renderCode), 90000); // 90s for renders with icons
               break;
             }
@@ -454,10 +455,10 @@ async function handleRequest(req, res) {
               const ClientClass = await getFigmaClient();
               const batchParser = new ClientClass();
               if (collection) batchParser.setCollection(collection);
-              const batchCode = await batchParser.parseJSXBatch(jsxArray, {
+              const batchCode = wrapRenderForPageScope(await batchParser.parseJSXBatch(jsxArray, {
                 gap: gap || 40,
                 vertical: vertical || false
-              });
+              }), pageId);
               result = await execWithTimeout(() => executeEval(batchCode), 60000); // 60s for batches
               break;
             }
