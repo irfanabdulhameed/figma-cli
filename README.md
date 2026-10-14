@@ -55,9 +55,19 @@ You never install this by hand — your AI assistant does it for you. It takes t
 
 | Step | What you do |
 |---|---|
-| **1. Prepare** | Install [Figma Desktop](https://www.figma.com/downloads/) and open it. Install your AI assistant (guides below). |
+| **1. Prepare** | Install [Figma Desktop](https://www.figma.com/downloads/) and open it, and [Node.js 18 or newer](https://nodejs.org/). Install your AI assistant (guides below). **On a Mac, do the one-time permission step below first.** |
 | **2. Install** | Tell the assistant to download this project and set it up. One sentence. |
 | **3. Design** | Describe what you want. Figma builds it in front of you. |
+
+### Before you start (Mac only, one time)
+
+figma-cli connects by applying a small, reversible patch to the Figma app. macOS blocks that until you allow it:
+
+1. Open **System Settings → Privacy & Security → App Management**.
+2. Turn on the app your assistant runs in: **Terminal**, **iTerm**, **Cursor**, **VS Code**, or whichever you use.
+3. Quit that app completely (Cmd+Q) and reopen it.
+
+Skip this and the patch fails, and you get pushed toward Safe Mode, which is slower and needs a plugin kept open in Figma. The first connect also restarts Figma once; after that it never does.
 
 Pick your assistant:
 
@@ -167,13 +177,14 @@ figma-cli talks to Figma Desktop in one of two ways. Your AI picks one during se
 - "Yolo" sounds scary, but it's **safe and undoable** — the AI can un-patch anytime, and nothing ever leaves your machine.
 - Just say *"connect to Figma"*.
 
-### 🛡️ Safe Mode — no changes to the Figma app
-- **Doesn't touch the Figma app at all.** Uses a tiny built-in Figma plugin instead.
-- Run it once from Figma's **Plugins → Development → FigCli** and keep the plugin open while you work.
-- A little more manual, but **zero modifications** to Figma — good if you (or your company's IT policy) don't want the app patched.
+### 🛡️ Safe Mode — last resort, slower
+Use it only if you can't give the App Management permission (for example, a company Mac you don't control). It doesn't touch the Figma app, but:
+- **It's slower and less reliable.** Every command goes through a plugin window inside Figma instead of straight to Figma.
+- **The plugin must stay open.** If it closes, or you switch files, commands fail until you run it again.
+- **You import the plugin once by hand:** in Figma, go to **Plugins → Development → Import plugin from manifest…** and pick `plugin/manifest.json` in this project's folder. Then run it from **Plugins → Development → FigCli** each time you work.
 - Say *"connect to Figma in safe mode"*.
 
-**Both do exactly the same things.** Unsure? Use Yolo. Want nothing changed on your Figma app? Use Safe. Switch anytime — just ask.
+**Both modes do the same things; Yolo is just faster and hands-off.** Use Yolo unless you truly can't.
 
 ---
 
@@ -308,7 +319,7 @@ Prefer to keep everything on your machine? figma-cli also works with **local LLM
 Everything above is powered by a CLI the AI calls for you. If you want to use it directly, script it, or see every command:
 
 - **[REFERENCE.md](REFERENCE.md)** — full command reference (tokens, render/JSX, components, gradients, a11y, export, the offline Figma API spec, and more).
-- Two connection modes: **Yolo** (direct, recommended) and **Safe** (plugin-based, no patching).
+- Two connection modes: **Yolo** (direct, recommended) and **Safe** (plugin-based, no patching, slower — last resort).
 
 You don't need any of this to use the tool — it's here for tinkerers.
 

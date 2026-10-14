@@ -227,7 +227,8 @@ program.action(async () => {
           console.log(chalk.gray('  2. Enable your terminal (Terminal, iTerm, etc.)'));
           console.log(chalk.gray('  3. Quit the terminal completely (Cmd+Q)'));
           console.log(chalk.gray('  4. Reopen it and try again'));
-          console.log(chalk.gray('  (If it still fails, also enable Full Disk Access — or just use Safe Mode: figma-cli connect --safe)\n'));
+          console.log(chalk.gray('  (If it still fails, also enable Full Disk Access.)'));
+          console.log(chalk.gray('  Last resort: Safe Mode (figma-cli connect --safe) — slower, and the FigCli plugin must stay open in Figma.\n'));
         } else if (error.message.includes('EPERM') || error.message.includes('permission')) {
           console.log(chalk.yellow('\n  Try running as administrator.\n'));
         }
@@ -397,7 +398,8 @@ program
           console.log(chalk.gray('  2. Enable your terminal (Terminal, iTerm, etc.)'));
           console.log(chalk.gray('  3. Quit the terminal completely (Cmd+Q)'));
           console.log(chalk.gray('  4. Reopen it and try again'));
-          console.log(chalk.gray('  (If it still fails, also enable Full Disk Access — or just use Safe Mode: figma-cli connect --safe)\n'));
+          console.log(chalk.gray('  (If it still fails, also enable Full Disk Access.)'));
+          console.log(chalk.gray('  Last resort: Safe Mode (figma-cli connect --safe) — slower, and the FigCli plugin must stay open in Figma.\n'));
         } else if (error.message.includes('EPERM') || error.message.includes('permission')) {
           console.log(chalk.yellow('\n  Try running as administrator.\n'));
         }
@@ -661,10 +663,12 @@ program
           console.log(chalk.cyan('  Step 5: ') + chalk.white('Reopen it and try again\n'));
 
           console.log(chalk.gray('  (On macOS 13+ "App Management" is what allows patching another app; Full Disk Access alone is not enough.)\n'));
-          console.log(chalk.gray('  Or use Safe Mode (no permission needed): ') + chalk.cyan('node src/index.js connect --safe\n'));
+          console.log(chalk.white('  This is a one-time step. After it, connecting is automatic.\n'));
+          console.log(chalk.gray('  Last resort, if you cannot grant the permission: ') + chalk.cyan('node src/index.js connect --safe'));
+          console.log(chalk.gray('  Safe Mode is slower and needs the FigCli plugin kept open in Figma.\n'));
         } else {
           console.log(chalk.yellow('\n  Try running as administrator.\n'));
-          console.log(chalk.gray('  Or use Safe Mode: ') + chalk.cyan('node src/index.js connect --safe\n'));
+          console.log(chalk.gray('  Last resort: ') + chalk.cyan('node src/index.js connect --safe') + chalk.gray(' (Safe Mode: slower, FigCli plugin must stay open)\n'));
         }
         return;
       }
