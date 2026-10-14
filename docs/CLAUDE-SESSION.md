@@ -6,7 +6,7 @@
 
 **Location:** the folder you cloned figma-cli into
 **npm package:** `figma-cli` (v1.1.0)
-**GitHub:** https://github.com/irfanabdulhameed/figma-cli
+**GitHub:** https://github.com/irfanabdulhameed/figma-mcp
 
 ## Key Commands for Claude
 

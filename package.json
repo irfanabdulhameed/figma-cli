@@ -21,11 +21,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/irfanabdulhameed/figma-cli.git"
+    "url": "git+https://github.com/irfanabdulhameed/figma-mcp.git"
   },
-  "homepage": "https://github.com/irfanabdulhameed/figma-cli",
+  "homepage": "https://github.com/irfanabdulhameed/figma-mcp",
   "bugs": {
-    "url": "https://github.com/irfanabdulhameed/figma-cli/issues"
+    "url": "https://github.com/irfanabdulhameed/figma-mcp/issues"
   },
   "scripts": {
     "test": "node --test tests/*.test.js"

@@ -73,7 +73,7 @@ All three drive the exact same CLI. The tool controls Figma Desktop, not your ed
 
 **1. Get the project.** Open Claude Code anywhere and paste:
 
-> "Download the figma-cli project from https://github.com/irfanabdulhameed/figma-cli into a folder in my home directory, then go into it."
+> "Download the figma-cli project from https://github.com/irfanabdulhameed/figma-mcp into a folder in my home directory, then go into it."
 
 (Or click the green **Code** button on GitHub → **Download ZIP** → unzip.)
 
@@ -93,7 +93,7 @@ Claude reads the project's instructions (`CLAUDE.md`), installs what's needed, a
 
 **1. One line does everything.** Open Cursor in any folder, open the Agent chat, and paste:
 
-> **"Install github.com/irfanabdulhameed/figma-cli and connect it to my Figma."**
+> **"Install github.com/irfanabdulhameed/figma-mcp and connect it to my Figma."**
 
 Cursor downloads the project, installs it, writes its own rules file, and connects to Figma. Under the hood it runs `figma-cli init-agent`, which drops `.cursor/rules/figma-cli.mdc` into the project — the file that teaches Cursor's Agent the rules (use real variables, wrap text properly, build N items as N components). You never edit it.
 
@@ -110,7 +110,7 @@ Codex reads **`AGENTS.md`** — the standard agent-instructions file — and thi
 **1. Get the project.** In a terminal:
 
 ```bash
-git clone https://github.com/irfanabdulhameed/figma-cli ~/figma-cli
+git clone https://github.com/irfanabdulhameed/figma-mcp ~/figma-cli
 cd ~/figma-cli
 ```
 
