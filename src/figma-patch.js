@@ -22,7 +22,9 @@ const CDP_PORT = 9222;
  * Get the CDP port (always 9222 for figma-use compatibility)
  */
 export function getCdpPort() {
-  return CDP_PORT;
+  // FIGMA_CDP_PORT lets a daemon attach to a separate Figma client (e.g. a browser started with --remote-debugging-port); default stays 9222
+  const p = parseInt(process.env.FIGMA_CDP_PORT || '', 10);
+  return Number.isFinite(p) && p > 0 ? p : CDP_PORT;
 }
 
 // The string that blocks remote debugging
