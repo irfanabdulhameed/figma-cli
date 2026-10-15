@@ -8,3 +8,4 @@ docs/figma-api/
 
 _ul
 src/.figma-client-*.mjs
+figma-memory/

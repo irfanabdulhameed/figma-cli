@@ -52,6 +52,8 @@ CLI that controls Figma Desktop directly. No API key needed.
 | "export tokens as DTCG / design tokens json" | `figma-cli export dtcg tokens.json` |
 | "export tokens as CSS / Tailwind" | `figma-cli export css` / `figma-cli export tailwind` |
 | "load our storybook" | `figma-cli import http://localhost:6006` |
+| "what did we do on this file?" | `figma-cli memory show` (or `memory show "File"`) |
+| (after any task that changes a file) | `figma-cli memory log "what you did, with ids"` |
 
 **Wallpaper palette tip:** for rich results pass **5-6 hue-diverse colors** (mix warm + cool + a bright accent), not shades of one color. Analogous palettes blend into a flat 2-tone wash. The command auto-adds a depth anchor + focal glow, and `--style auto` rotates compositions (scatter/diagonal/bands/drift/spotlight/corners). For N wallpapers, run it N times with different palettes + styles. Add `--grain` for subtle film-grain NOISE or `--texture` for paper grain over the wallpaper.
 
@@ -216,6 +218,15 @@ shows up as confidently-wrong recall ("hallucinated" IDs). Keep context lean:
 - **Don't drive the same task through a verbose MCP (e.g. figma-console) in parallel** —
   its responses + 100+ tool schemas fill context several times faster than figma-cli.
   If you must, use its `format:"summary"` / `verbosity:"inventory"` flags.
+
+---
+
+## Per-file memory
+
+Every Figma file gets one hub note (`file-<slug>.md` in `$FIGMA_CLI_MEMORY_DIR`,
+default `./figma-memory`). Before answering what was done on a file, read it
+with `memory show`; after any task that changes a file, add one dated line with
+`memory log`. Details and the hub format: docs/MEMORY.md.
 
 ---
 

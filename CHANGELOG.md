@@ -4,6 +4,7 @@
 
 ### New
 
+- **Per-file memory (`figma-cli memory`).** One markdown hub note per Figma file, so a new agent session can answer "what did we do on this file?" from one note. `memory log "<what>"` adds a dated line (newest first) to the connected file's hub, records the page, creates the hub for a new file and keeps a "Figma files" block in the index; `memory show` and `memory list` read them back. Notes stay local (`$FIGMA_CLI_MEMORY_DIR`, default `./figma-memory`). Guide: docs/MEMORY.md.
 - **Variable-collection roundtrip.** `figma-cli extract` now captures the file's real variable collections , every variable with its true name, all its modes (light/dark, high-contrast, colour-blind, whatever the system defines) and its alias chains , into a `## Variables` section plus the machine-readable JSON token block. This is the authoritative token layer, not the palette sampled from fills. `figma-cli import` recreates those collections faithfully (modes and aliases included) in any other file, closing the variables roundtrip. Captured in bounded chunks so large systems (thousands of variables) don't time out, and aliases to library/remote variables resolve to their real names.
 - **`figma-cli extract --sections variables`** for a variables-only export.
 

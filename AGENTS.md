@@ -97,3 +97,10 @@ figma-cli node to-component "<id>"     # promote to a component
 figma-cli verify "<id>" --measure      # screenshot + dimensions
 figma-cli a11y audit                   # contrast / touch / text checks
 ```
+
+## Per-file memory
+
+Keep one hub note per Figma file so later sessions know what happened there:
+`figma-cli memory show` before answering "what did we do on this file",
+`figma-cli memory log "<what you did, with ids>"` after any task that changes
+it. See docs/MEMORY.md.

@@ -138,6 +138,21 @@ Re-import the output at any time:
 figma-cli import DESIGN.md
 ```
 
+## Per-file memory
+
+One hub note per Figma file, so agent sessions know what was done where.
+Full guide: [MEMORY.md](MEMORY.md).
+
+```bash
+figma-cli memory log "built the payment step"   # dated line in the connected file's hub
+figma-cli memory log --page 4:10 "..."           # record a specific page
+figma-cli memory log --file "Web App" --skip-page "..."  # no Figma lookup
+figma-cli memory show [file]                     # print a hub
+figma-cli memory list                            # every hub + newest entry
+```
+
+Folder: `--dir`, else `$FIGMA_CLI_MEMORY_DIR`, else `./figma-memory`.
+
 ## Import (all sources)
 
 `figma-cli import <source>` accepts DESIGN.md files, Tailwind configs, CSS
